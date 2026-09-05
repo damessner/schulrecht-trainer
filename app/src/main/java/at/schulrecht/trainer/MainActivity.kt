@@ -11,6 +11,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import at.schulrecht.trainer.ui.exam.ExamScreen
+import at.schulrecht.trainer.ui.exam.ExamViewModel
 import at.schulrecht.trainer.ui.home.HomeScreen
 import at.schulrecht.trainer.ui.home.HomeViewModel
 import at.schulrecht.trainer.ui.module.ModuleScreen
@@ -31,7 +33,11 @@ class MainActivity : ComponentActivity() {
                         val vm: HomeViewModel = viewModel(
                             factory = factory { HomeViewModel(container.repository) }
                         )
-                        HomeScreen(viewModel = vm, onOpenModule = { nav.navigate("module/$it") })
+                        HomeScreen(
+                            viewModel = vm,
+                            onOpenModule = { nav.navigate("module/$it") },
+                            onOpenReview = { nav.navigate("review") }
+                        )
                     }
                     composable(
                         "module/{id}",
@@ -46,7 +52,37 @@ class MainActivity : ComponentActivity() {
                             moduleId = id,
                             viewModel = vm,
                             onBack = { nav.popBackStack() },
-                            onStartQuiz = { mid, level -> nav.navigate("quiz/$mid/$level") }
+                            onStartQuiz = { mid, level -> nav.navigate("quiz/$mid/$level") },
+                            onStartExam = { mid -> nav.navigate("exam/$mid") }
+                        )
+                    }
+                    composable("review") {
+                        val vm: QuizViewModel = viewModel(
+                            key = "review-${System.currentTimeMillis()}",
+                            factory = factory {
+                                QuizViewModel("", "", container.repository, reviewOnly = true)
+                            }
+                        )
+                        QuizScreen(
+                            moduleId = "Wiederholen",
+                            level = "fällig",
+                            viewModel = vm,
+                            onBack = { nav.popBackStack() }
+                        )
+                    }
+                    composable(
+                        "exam/{id}",
+                        arguments = listOf(navArgument("id") { type = NavType.StringType })
+                    ) { backStack ->
+                        val id = backStack.arguments?.getString("id") ?: return@composable
+                        val vm: ExamViewModel = viewModel(
+                            key = "exam-$id-${System.currentTimeMillis()}",
+                            factory = factory { ExamViewModel(id, container.repository) }
+                        )
+                        ExamScreen(
+                            moduleId = id,
+                            viewModel = vm,
+                            onBack = { nav.popBackStack() }
                         )
                     }
                     composable(

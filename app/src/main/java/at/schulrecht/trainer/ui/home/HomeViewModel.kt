@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 
 data class HomeUiState(
     val modules: List<ModuleUi> = emptyList(),
+    val dueCount: Int = 0,
     val isSyncing: Boolean = false,
     val progress: SyncProgress = SyncProgress(0, 0),
     val updateAvailable: Boolean = false,
@@ -29,6 +30,11 @@ class HomeViewModel(private val repo: SchulrechtRepository) : ViewModel() {
 
     init {
         viewModelScope.launch {
+            launch {
+                repo.observeDueCount().collect { due ->
+                    _state.update { it.copy(dueCount = due) }
+                }
+            }
             repo.observeModuleUi()
                 .catch { e -> _state.update { it.copy(error = e.message) } }
                 .collect { modules ->

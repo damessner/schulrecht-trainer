@@ -45,6 +45,17 @@ data class AttemptEntity(
     val createdAt: Long
 )
 
+@Entity(tableName = "review_states")
+data class ReviewStateEntity(
+    @PrimaryKey val questionId: String,
+    val modulId: String,
+    val level: String,
+    val box: Int,
+    val nextDue: Long,
+    val fails: Int,
+    val passes: Int
+)
+
 data class ModuleCount(
     val modulId: String,
     val total: Int

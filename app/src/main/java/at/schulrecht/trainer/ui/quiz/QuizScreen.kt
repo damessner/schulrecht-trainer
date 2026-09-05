@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import at.schulrecht.trainer.data.QuestionUi
+import at.schulrecht.trainer.ui.components.ExplanationCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -109,7 +110,14 @@ private fun QuestionCard(state: QuizUiState, viewModel: QuizViewModel, modifier:
                 Text("Antwort prüfen")
             }
         } else {
-            ExplanationCard(q = q, score = state.lastScore)
+            ExplanationCard(
+                q = q,
+                headline = if (state.lastScore == 1f) {
+                    "Richtig."
+                } else {
+                    "Teils richtig (${(state.lastScore * 100).toInt()} %)."
+                }
+            )
             OutlinedButton(onClick = { viewModel.next() }, modifier = Modifier.fillMaxWidth()) {
                 Text(if (state.index + 1 >= state.questions.size) "Zum Ergebnis" else "Weiter")
             }
@@ -149,26 +157,6 @@ private fun OptionRow(
 
 private fun stateFeedback(q: QuestionUi, index: Int): String =
     if (index in q.richtig) "ok" else "miss"
-
-@Composable
-private fun ExplanationCard(q: QuestionUi, score: Float) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                if (score == 1f) "Richtig." else "Teils richtig (${(score * 100).toInt()} %).",
-                style = MaterialTheme.typography.titleMedium
-            )
-            q.feedbacks.forEachIndexed { i, fb ->
-                if (fb.isNotBlank()) Text("${'A' + i}) $fb", style = MaterialTheme.typography.bodySmall)
-            }
-            Text(q.aufloesung, style = MaterialTheme.typography.bodyMedium)
-            Text(
-                "Zum Nachlesen: ${q.hauptquelle} (Stand ${q.stand})",
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
-    }
-}
 
 private fun typeLabel(typ: String): String = when (typ) {
     "multiple" -> "Mehrere richtig"

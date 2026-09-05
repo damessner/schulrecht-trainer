@@ -27,7 +27,8 @@ import at.schulrecht.trainer.data.ModuleUi
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
-    onOpenModule: (String) -> Unit
+    onOpenModule: (String) -> Unit,
+    onOpenReview: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     Scaffold(
@@ -45,6 +46,20 @@ fun HomeScreen(
                 done = state.progress.done,
                 total = state.progress.total
             )
+            if (state.dueCount > 0 && !state.isSyncing) {
+                Card(
+                    onClick = onOpenReview,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            "Wiederholen fällig: ${state.dueCount}",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text("Deine Schwachpunkte warten (Spaced Repetition).")
+                    }
+                }
+            }
             if (state.modules.isEmpty() && !state.isSyncing) {
                 Button(
                     onClick = { viewModel.sync() },

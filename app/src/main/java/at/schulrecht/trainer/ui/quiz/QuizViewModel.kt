@@ -30,16 +30,20 @@ data class QuizUiState(
 class QuizViewModel(
     private val moduleId: String,
     private val level: String,
-    private val repo: SchulrechtRepository
+    private val repo: SchulrechtRepository,
+    private val reviewOnly: Boolean = false
 ) : ViewModel() {
     private val _state = MutableStateFlow(QuizUiState())
     val state: StateFlow<QuizUiState> = _state.asStateFlow()
 
     init {
         viewModelScope.launch {
-            val questions = repo.observeQuestions(moduleId, level).first()
-                .shuffled()
-                .map { QuizShuffle.shuffle(it) }
+            val loaded = if (reviewOnly) {
+                repo.observeDueQuestions().first()
+            } else {
+                repo.observeQuestions(moduleId, level).first()
+            }
+            val questions = loaded.shuffled().map { QuizShuffle.shuffle(it) }
             _state.update { it.copy(questions = questions, loading = false) }
         }
     }
@@ -63,7 +67,10 @@ class QuizViewModel(
         if (s.revealed || s.selected.isEmpty()) return
         val score = QuizScoring.scoreOf(q.typ, q.richtig, s.selected)
         val full = score == 1f
-        viewModelScope.launch { repo.recordAttempt(q, score, full) }
+        viewModelScope.launch {
+            repo.recordAttempt(q, score, full)
+            repo.recordReview(q, full)
+        }
         _state.update {
             it.copy(
                 revealed = true,

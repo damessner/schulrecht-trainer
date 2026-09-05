@@ -31,7 +31,8 @@ fun ModuleScreen(
     moduleId: String,
     viewModel: ModuleViewModel,
     onBack: () -> Unit,
-    onStartQuiz: (String, String) -> Unit
+    onStartQuiz: (String, String) -> Unit,
+    onStartExam: (String) -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     Scaffold(
@@ -55,6 +56,13 @@ fun ModuleScreen(
         ) {
             if (state.levels.isEmpty()) {
                 Text("Lade Fragen …")
+            }
+            Button(
+                onClick = { onStartExam(moduleId) },
+                enabled = state.levels.sumOf { it.total } > 0,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Prüfung: 20 Fragen, 20 Minuten")
             }
             state.levels.forEach { level ->
                 Card(modifier = Modifier.fillMaxWidth()) {

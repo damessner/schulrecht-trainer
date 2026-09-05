@@ -39,3 +39,25 @@ interface AttemptDao {
     @Query("DELETE FROM attempts")
     suspend fun clearAll()
 }
+
+@Dao
+interface ReviewDao {
+    @Upsert
+    suspend fun upsert(state: ReviewStateEntity)
+
+    @Query("SELECT * FROM review_states WHERE questionId = :questionId")
+    suspend fun get(questionId: String): ReviewStateEntity?
+
+    @Query("SELECT COUNT(*) FROM review_states WHERE nextDue <= :now")
+    fun observeDueCount(now: Long): Flow<Int>
+
+    @Query(
+        "SELECT q.* FROM questions q " +
+            "INNER JOIN review_states r ON r.questionId = q.id " +
+            "WHERE r.nextDue <= :now ORDER BY r.nextDue"
+    )
+    fun observeDueQuestions(now: Long): Flow<List<QuestionEntity>>
+
+    @Query("DELETE FROM review_states")
+    suspend fun clearAll()
+}

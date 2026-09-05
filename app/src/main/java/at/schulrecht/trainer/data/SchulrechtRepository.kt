@@ -3,9 +3,11 @@ package at.schulrecht.trainer.data
 import at.schulrecht.trainer.data.local.AttemptEntity
 import at.schulrecht.trainer.data.local.ModuleEntity
 import at.schulrecht.trainer.data.local.QuestionEntity
+import at.schulrecht.trainer.data.local.ReviewStateEntity
 import at.schulrecht.trainer.data.local.TrainerDatabase
 import at.schulrecht.trainer.data.local.UserPrefs
 import at.schulrecht.trainer.data.remote.ContentApi
+import at.schulrecht.trainer.domain.Srs
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -93,6 +95,40 @@ class SchulrechtRepository(
 
     suspend fun resetProgress() {
         db.attemptDao().clearAll()
+        db.reviewDao().clearAll()
+    }
+
+    fun observeDueCount(): Flow<Int> =
+        db.reviewDao().observeDueCount(System.currentTimeMillis())
+
+    fun observeDueQuestions(): Flow<List<QuestionUi>> =
+        db.reviewDao().observeDueQuestions(System.currentTimeMillis()).map { list ->
+            list.map { entity -> entity.toUi() }
+        }
+
+    suspend fun recordReview(question: QuestionUi, correct: Boolean) {
+        val dao = db.reviewDao()
+        val current = dao.get(question.id)
+        val next = Srs.next(
+            correct = correct,
+            box = current?.box ?: 0,
+            passes = current?.passes ?: 0,
+            fails = current?.fails ?: 0
+        )
+        // Neue Karteikarte startet in Box 0 nur bei Fehlern; richtige Antworten
+        // ohne Vorgeschichte brauchen keinen Eintrag.
+        if (current == null && correct) return
+        dao.upsert(
+            ReviewStateEntity(
+                questionId = question.id,
+                modulId = question.modulId,
+                level = question.level,
+                box = next.box,
+                nextDue = next.nextDue,
+                fails = next.fails,
+                passes = next.passes
+            )
+        )
     }
 
     fun observeLocalVersion(): Flow<String?> = prefs.manifestVersion
