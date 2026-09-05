@@ -17,9 +17,27 @@ android {
         versionName = "1.0.0"
     }
 
+    signingConfigs {
+        create("release") {
+            val storePath = project.findProperty("TRAINER_STORE_FILE") as String?
+            val pwPath = project.findProperty("TRAINER_STORE_PASSWORD_FILE") as String?
+            if (storePath != null && pwPath != null) {
+                val pw = file(pwPath).readText().trim()
+                storeFile = file(storePath)
+                storePassword = pw
+                keyAlias = project.findProperty("TRAINER_KEY_ALIAS") as String? ?: "trainer"
+                keyPassword = pw
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
+            val storePath = project.findProperty("TRAINER_STORE_FILE") as String?
+            if (storePath != null && file(storePath).exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
