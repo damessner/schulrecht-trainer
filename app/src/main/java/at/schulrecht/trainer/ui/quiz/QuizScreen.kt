@@ -30,6 +30,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import at.schulrecht.trainer.data.QuestionUi
 import at.schulrecht.trainer.ui.components.ExplanationCard
+import at.schulrecht.trainer.ui.components.OptionLetter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,6 +94,7 @@ private fun QuestionCard(state: QuizUiState, viewModel: QuizViewModel, modifier:
         Text(q.situation, style = MaterialTheme.typography.bodyLarge)
         q.optionen.forEachIndexed { i, text ->
             OptionRow(
+                letter = 'A' + i,
                 text = text,
                 checked = i in state.selected,
                 enabled = !state.revealed,
@@ -127,6 +129,7 @@ private fun QuestionCard(state: QuizUiState, viewModel: QuizViewModel, modifier:
 
 @Composable
 private fun OptionRow(
+    letter: Char,
     text: String,
     checked: Boolean,
     enabled: Boolean,
@@ -150,6 +153,7 @@ private fun OptionRow(
         ) {
             if (single) RadioButton(selected = checked, onClick = null, enabled = enabled)
             else Checkbox(checked = checked, onCheckedChange = null, enabled = enabled)
+            OptionLetter(letter = letter)
             Text(text, modifier = Modifier.weight(1f))
         }
     }

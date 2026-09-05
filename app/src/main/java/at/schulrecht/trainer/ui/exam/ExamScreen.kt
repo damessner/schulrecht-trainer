@@ -24,11 +24,13 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import at.schulrecht.trainer.ui.components.ExplanationCard
+import at.schulrecht.trainer.ui.components.OptionLetter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -111,6 +113,7 @@ private fun ExamQuestionView(state: ExamUiState, viewModel: ExamViewModel, modif
                     } else {
                         RadioButton(selected = i in selected, onClick = null)
                     }
+                    OptionLetter(letter = 'A' + i)
                     Text(text, modifier = Modifier.weight(1f))
                 }
             }
@@ -153,26 +156,37 @@ private fun ExamResultView(state: ExamUiState, onBack: () -> Unit, modifier: Mod
         )
         Text("Punkte: ${"%.1f".format(state.totalScore)} / $n (Grenze 60 %)")
         state.results.forEachIndexed { i, r ->
-            Card(
-                colors = if (r.score == 1f) {
-                    CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
-                } else {
-                    CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(12.dp)) {
-                    Text("Frage ${i + 1}: ${"%.0f".format(r.score * 100)} %")
-                }
-            }
-            ExplanationCard(
-                q = r.question,
-                headline = if (r.selected.isEmpty()) "Nicht beantwortet."
-                else "Deine Wahl: ${r.selected.sorted().joinToString { "${'A' + it}" }}."
-            )
+            ReviewRow(index = i, result = r)
         }
         Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
             Text("Zurück zur Übersicht")
+        }
+    }
+}
+
+@Composable
+private fun ReviewRow(index: Int, result: ExamResult) {
+    var expanded by androidx.compose.runtime.remember(result.question.id) {
+        androidx.compose.runtime.mutableStateOf(result.score < 1f)
+    }
+    Card(
+        onClick = { expanded = !expanded },
+        colors = if (result.score == 1f) {
+            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+        } else {
+            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+        },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text("Frage ${index + 1}: ${"%.0f".format(result.score * 100)} % ${if (expanded) "–" else "+"}")
+            if (expanded) {
+                ExplanationCard(
+                    q = result.question,
+                    headline = if (result.selected.isEmpty()) "Nicht beantwortet."
+                    else "Deine Wahl: ${result.selected.sorted().joinToString { "${'A' + it}" }}."
+                )
+            }
         }
     }
 }

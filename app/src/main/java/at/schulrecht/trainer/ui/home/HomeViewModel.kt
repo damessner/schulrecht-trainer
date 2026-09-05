@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 
 data class HomeUiState(
     val modules: List<ModuleUi> = emptyList(),
+    val query: String = "",
     val dueCount: Int = 0,
     val isSyncing: Boolean = false,
     val progress: SyncProgress = SyncProgress(0, 0),
@@ -84,5 +85,9 @@ class HomeViewModel(private val repo: SchulrechtRepository) : ViewModel() {
 
     fun resetProgress() {
         viewModelScope.launch { repo.resetProgress() }
+    }
+
+    fun setQuery(query: String) {
+        _state.update { it.copy(query = query) }
     }
 }

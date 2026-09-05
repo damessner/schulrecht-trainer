@@ -1,5 +1,6 @@
 package at.schulrecht.trainer.ui.home
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,6 +13,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -23,7 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import at.schulrecht.trainer.data.ModuleUi
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
@@ -84,8 +86,26 @@ fun HomeScreen(
                 Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(vertical = 4.dp))
             }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(state.modules, key = { it.id }) { module ->
-                    ModuleCard(module = module, onClick = { onOpenModule(module.id) })
+                item {
+                    OutlinedTextField(
+                        value = state.query,
+                        onValueChange = { viewModel.setQuery(it) },
+                        label = { Text("Modul suchen") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                groupedModules(state.modules, state.query).forEach { (saeule, modules) ->
+                    stickyHeader {
+                        Text(
+                            saeuleTitle(saeule),
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
+                    items(modules, key = { it.id }) { module ->
+                        ModuleCard(module = module, onClick = { onOpenModule(module.id) })
+                    }
                 }
                 item {
                     TextButton(
@@ -121,6 +141,33 @@ private fun SlimProgress(modules: List<ModuleUi>, isSyncing: Boolean, done: Int,
             Text("Noch keine Inhalte.", style = MaterialTheme.typography.bodySmall)
         }
     }
+}
+
+private val SAEULE_ORDER = mapOf(
+    "A-SchUG" to 0,
+    "B-LDG" to 1,
+    "C-TirolSOG" to 2,
+    "X-Transfer" to 3
+)
+
+private fun saeuleTitle(saeule: String): String = when (saeule) {
+    "A-SchUG" -> "Schulunterrichtsgesetz"
+    "B-LDG" -> "Lehrer-Dienstrecht"
+    "C-TirolSOG" -> "Tirol Organisation"
+    "X-Transfer" -> "Transfer & Notfall"
+    else -> saeule
+}
+
+private fun groupedModules(
+    modules: List<ModuleUi>,
+    query: String
+): List<Pair<String, List<ModuleUi>>> {
+    val q = query.trim().lowercase()
+    val filtered = if (q.isEmpty()) modules
+    else modules.filter { it.id.lowercase().contains(q) || it.titel.lowercase().contains(q) }
+    return filtered.groupBy { it.saeule }
+        .toList()
+        .sortedBy { (saeule, _) -> SAEULE_ORDER[saeule] ?: 99 }
 }
 
 @Composable
