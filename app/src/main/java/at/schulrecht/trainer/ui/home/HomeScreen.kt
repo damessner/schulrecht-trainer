@@ -30,6 +30,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import at.schulrecht.trainer.data.ModuleUi
@@ -210,34 +213,44 @@ private fun groupedModules(
 
 @Composable
 private fun GameHeader(game: at.schulrecht.trainer.ui.home.GameState) {
-    Card(modifier = Modifier
-        .fillMaxWidth()
-        .padding(vertical = 8.dp)) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                "Level ${game.level} · ${game.xp} XP · Serie ${game.streak} ${if (game.streak == 1) "Tag" else "Tage"}",
-                style = MaterialTheme.typography.titleMedium
-            )
+    var expanded by remember { mutableStateOf(false) }
+    Card(
+        onClick = { expanded = !expanded },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "Level ${game.level} · ${game.xp} XP · Serie ${game.streak} ${if (game.streak == 1) "Tag" else "Tage"}",
+                    style = MaterialTheme.typography.titleSmall
+                )
+                Text(if (expanded) "–" else "+", style = MaterialTheme.typography.titleSmall)
+            }
             LinearProgressIndicator(
                 progress = { game.xpInLevel.toFloat() / game.xpForNext },
                 modifier = Modifier.fillMaxWidth()
             )
-            Text(
-                "Noch ${game.xpForNext - game.xpInLevel} XP bis Level ${game.level + 1}",
-                style = MaterialTheme.typography.bodySmall
-            )
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(
-                    at.schulrecht.trainer.domain.ALL_BADGES,
-                    key = { it.id }
-                ) { badge ->
-                    val earned = badge.id in game.badges
-                    AssistChip(
-                        onClick = {},
-                        label = { Text(if (earned) badge.title else "?") },
-                        leadingIcon = { Text(if (earned) "★" else "·") },
-                        enabled = earned
-                    )
+            if (expanded) {
+                Text(
+                    "Noch ${game.xpForNext - game.xpInLevel} XP bis Level ${game.level + 1}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(
+                        at.schulrecht.trainer.domain.ALL_BADGES,
+                        key = { it.id }
+                    ) { badge ->
+                        val earned = badge.id in game.badges
+                        AssistChip(
+                            onClick = {},
+                            label = { Text(if (earned) badge.title else "?") },
+                            leadingIcon = { Text(if (earned) "★" else "·") },
+                            enabled = earned
+                        )
+                    }
                 }
             }
         }
