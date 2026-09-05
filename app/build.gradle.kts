@@ -41,7 +41,11 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = true
-            val storePath = project.findProperty("TRAINER_STORE_FILE") as String?
+            val storePath = System.getenv("ANDROID_KEYSTORE_FILE")
+                ?: (project.findProperty("TRAINER_STORE_FILE") as String?)
+            if (System.getenv("CI") == "true" && storePath == null) {
+                throw GradleException("ANDROID_KEYSTORE_FILE fehlt in CI – Release wäre unsigniert!")
+            }
             if (storePath != null && file(storePath).exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }
