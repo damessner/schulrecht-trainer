@@ -40,7 +40,7 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     onOpenModule: (String) -> Unit,
     onOpenReview: () -> Unit,
-    onInstallAppUpdate: (String) -> Unit
+    onInstallAppUpdate: (String, String) -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     Scaffold(
@@ -95,7 +95,7 @@ fun HomeScreen(
             state.appUpdate?.let { update ->
                 if (!state.isSyncing) {
                     Button(
-                        onClick = { onInstallAppUpdate(update.apkUrl) },
+                        onClick = { onInstallAppUpdate(update.apkUrl, update.version) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp)

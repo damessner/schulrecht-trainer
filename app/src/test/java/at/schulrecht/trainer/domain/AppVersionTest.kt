@@ -23,4 +23,14 @@ class AppVersionTest {
     fun newerPatch() {
         assertEquals(true, AppVersion.isNewer("v1.3.1", "1.3.0"))
     }
+
+    @Test
+    fun sameVersionIgnoresVAndTrailingZero() {
+        assertEquals(true, AppVersion.sameVersion("v1.6", "1.6.0"))
+    }
+
+    @Test
+    fun sameVersionDetectsMismatch() {
+        assertEquals(false, AppVersion.sameVersion("v1.6", "1.5.0"))
+    }
 }

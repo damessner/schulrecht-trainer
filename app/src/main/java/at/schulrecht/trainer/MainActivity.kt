@@ -6,8 +6,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -22,6 +24,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import at.schulrecht.trainer.ui.exam.ExamScreen
 import at.schulrecht.trainer.ui.exam.ExamViewModel
+import at.schulrecht.trainer.domain.AppVersion
 import at.schulrecht.trainer.ui.home.HomeScreen
 import at.schulrecht.trainer.ui.home.HomeViewModel
 import at.schulrecht.trainer.ui.module.ModuleScreen
@@ -33,6 +36,11 @@ import at.schulrecht.trainer.ui.theme.TrainerTheme
 class MainActivity : ComponentActivity() {
     private var updateDownloadId: Long = -1
 
+    companion object {
+        private const val KEY_DOWNLOAD_ID = "download_id"
+        private const val KEY_EXPECTED_VERSION = "expected_version"
+    }
+
     private val downloadReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
@@ -43,6 +51,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        updateDownloadId = updaterPrefs().getLong(KEY_DOWNLOAD_ID, -1)
         androidx.core.content.ContextCompat.registerReceiver(
             this,
             downloadReceiver,
@@ -64,7 +73,7 @@ class MainActivity : ComponentActivity() {
                             viewModel = vm,
                             onOpenModule = { nav.navigate("module/$it") },
                             onOpenReview = { nav.navigate("review") },
-                            onInstallAppUpdate = { url -> downloadUpdate(url) }
+                            onInstallAppUpdate = { url, version -> downloadUpdate(url, version) }
                         )
                     }
                     composable(
@@ -144,8 +153,49 @@ class MainActivity : ComponentActivity() {
             override fun <V : ViewModel> create(modelClass: Class<V>): V = create() as V
         }
 
-    private fun downloadUpdate(apkUrl: String) {
+    override fun onResume() {
+        super.onResume()
+        if (updateDownloadId != -1L && isDownloadComplete(updateDownloadId)) {
+            installApk()
+        }
+    }
+
+    private fun updaterPrefs() =
+        getSharedPreferences("updater", MODE_PRIVATE)
+
+    private fun isDownloadComplete(id: Long): Boolean {
+        val manager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
+        manager.query(DownloadManager.Query().setFilterById(id)).use { cursor ->
+            if (!cursor.moveToFirst()) return false
+            val status = cursor.getInt(
+                cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS)
+            )
+            return status == DownloadManager.STATUS_SUCCESSFUL
+        }
+    }
+
+    private fun downloadUpdate(apkUrl: String, expectedVersion: String) {
+        if (!packageManager.canRequestPackageInstalls()) {
+            Toast.makeText(
+                this,
+                "Bitte Installation erlauben, dann erneut tippen.",
+                Toast.LENGTH_LONG
+            ).show()
+            startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:$packageName")
+                )
+            )
+            return
+        }
         try {
+            val dest = java.io.File(
+                getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
+                "update.apk"
+            )
+            if (dest.exists()) dest.delete()
+            updaterPrefs().edit().putString(KEY_EXPECTED_VERSION, expectedVersion).apply()
             val request = DownloadManager.Request(Uri.parse(apkUrl))
                 .setTitle("Schulrecht Trainer Update")
                 .setDestinationInExternalFilesDir(
@@ -158,6 +208,7 @@ class MainActivity : ComponentActivity() {
                 )
             val manager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
             updateDownloadId = manager.enqueue(request)
+            updaterPrefs().edit().putLong(KEY_DOWNLOAD_ID, updateDownloadId).apply()
             Toast.makeText(this, "Update wird geladen …", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Toast.makeText(this, "Download fehlgeschlagen.", Toast.LENGTH_LONG).show()
@@ -173,6 +224,33 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(this, "Download fehlgeschlagen.", Toast.LENGTH_LONG).show()
             return
         }
+        val expected = updaterPrefs().getString(KEY_EXPECTED_VERSION, null)
+        @Suppress("DEPRECATION")
+        val info = if (Build.VERSION.SDK_INT >= 33) {
+            packageManager.getPackageArchiveInfo(
+                file.path,
+                android.content.pm.PackageManager.PackageInfoFlags.of(0)
+            )
+        } else {
+            packageManager.getPackageArchiveInfo(file.path, 0)
+        }
+        val actual = info?.versionName
+        if (actual == null || expected == null || !AppVersion.sameVersion(expected, actual)) {
+            file.delete()
+            updaterPrefs().edit()
+                .remove(KEY_DOWNLOAD_ID)
+                .remove(KEY_EXPECTED_VERSION)
+                .apply()
+            updateDownloadId = -1
+            Toast.makeText(
+                this,
+                "Update-Datei ungültig (gefunden: ${actual ?: "?"}), bitte erneut laden.",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+        updaterPrefs().edit().remove(KEY_DOWNLOAD_ID).apply()
+        updateDownloadId = -1
         val apkUri = FileProvider.getUriForFile(this, "$packageName.provider", file)
         val install = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(apkUri, "application/vnd.android.package-archive")
