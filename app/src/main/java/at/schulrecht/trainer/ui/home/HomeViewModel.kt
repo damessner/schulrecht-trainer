@@ -6,18 +6,31 @@ import at.schulrecht.trainer.data.AppUpdate
 import at.schulrecht.trainer.data.ModuleUi
 import at.schulrecht.trainer.data.SchulrechtRepository
 import at.schulrecht.trainer.data.SyncProgress
+import at.schulrecht.trainer.domain.Gamification
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+data class GameState(
+    val xp: Int = 0,
+    val level: Int = 1,
+    val xpInLevel: Int = 0,
+    val xpForNext: Int = 1,
+    val streak: Int = 0,
+    val badges: Set<String> = emptySet()
+)
+
 data class HomeUiState(
     val modules: List<ModuleUi> = emptyList(),
     val query: String = "",
+    val searchOpen: Boolean = false,
     val dueCount: Int = 0,
+    val game: GameState = GameState(),
     val isSyncing: Boolean = false,
     val progress: SyncProgress = SyncProgress(0, 0),
     val updateAvailable: Boolean = false,
@@ -39,6 +52,33 @@ class HomeViewModel(
             launch {
                 repo.observeDueCount().collect { due ->
                     _state.update { it.copy(dueCount = due) }
+                }
+            }
+            launch {
+                combine(
+                    repo.observeAttempts(),
+                    repo.observeExamsPassed()
+                ) { attempts, passed -> attempts to passed }.collect { (attempts, passed) ->
+                    val xp = attempts.sumOf { Gamification.xpForScore(it.score) }
+                    val fullHits = attempts.count { it.correct }
+                    val streak = Gamification.streakDays(attempts.map { it.createdAt })
+                    _state.update { current ->
+                        val completed = current.modules.count { m ->
+                            m.total > 0 && m.answered >= m.total
+                        }
+                        current.copy(
+                            game = GameState(
+                                xp = xp,
+                                level = Gamification.levelForXp(xp),
+                                xpInLevel = Gamification.xpIntoLevel(xp).first,
+                                xpForNext = Gamification.xpIntoLevel(xp).second,
+                                streak = streak,
+                                badges = Gamification.earnedBadges(
+                                    fullHits, xp, streak, passed, completed
+                                )
+                            )
+                        )
+                    }
                 }
             }
             repo.observeModuleUi()
@@ -100,5 +140,9 @@ class HomeViewModel(
 
     fun setQuery(query: String) {
         _state.update { it.copy(query = query) }
+    }
+
+    fun toggleSearch() {
+        _state.update { it.copy(searchOpen = !it.searchOpen, query = "") }
     }
 }

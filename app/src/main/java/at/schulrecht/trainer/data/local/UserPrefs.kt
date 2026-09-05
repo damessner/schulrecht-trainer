@@ -24,8 +24,20 @@ class UserPrefs(context: Context) {
         store.edit { it[KEY_SYNC] = timestamp }
     }
 
+    val examsTaken: Flow<Int> = store.data.map { it[KEY_EXAMS_TAKEN] ?: 0 }
+    val examsPassed: Flow<Int> = store.data.map { it[KEY_EXAMS_PASSED] ?: 0 }
+
+    suspend fun recordExam(passed: Boolean) {
+        store.edit {
+            it[KEY_EXAMS_TAKEN] = (it[KEY_EXAMS_TAKEN] ?: 0) + 1
+            if (passed) it[KEY_EXAMS_PASSED] = (it[KEY_EXAMS_PASSED] ?: 0) + 1
+        }
+    }
+
     companion object {
         private val KEY_VERSION = stringPreferencesKey("manifest_version")
         private val KEY_SYNC = longPreferencesKey("last_sync")
+        private val KEY_EXAMS_TAKEN = androidx.datastore.preferences.core.intPreferencesKey("exams_taken")
+        private val KEY_EXAMS_PASSED = androidx.datastore.preferences.core.intPreferencesKey("exams_passed")
     }
 }

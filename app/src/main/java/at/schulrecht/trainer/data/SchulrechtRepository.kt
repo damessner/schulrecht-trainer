@@ -106,6 +106,14 @@ class SchulrechtRepository(
     fun observeDueCount(): Flow<Int> =
         db.reviewDao().observeDueCount(System.currentTimeMillis())
 
+    fun observeAttempts() = db.attemptDao().observeAll()
+
+    fun observeExamsPassed() = prefs.examsPassed
+
+    suspend fun recordExam(passed: Boolean) {
+        prefs.recordExam(passed)
+    }
+
     fun observeDueQuestions(): Flow<List<QuestionUi>> =
         db.reviewDao().observeDueQuestions(System.currentTimeMillis()).map { list ->
             list.map { entity -> entity.toUi() }

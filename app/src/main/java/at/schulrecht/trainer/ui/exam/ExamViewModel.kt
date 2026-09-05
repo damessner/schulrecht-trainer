@@ -118,6 +118,8 @@ class ExamViewModel(
                 repo.recordAttempt(r.question, r.score, full)
                 repo.recordReview(r.question, full)
             }
+            val total = results.sumOf { it.score.toDouble() }.toFloat()
+            repo.recordExam(total / s.questions.size >= PASS_THRESHOLD)
         }
     }
 }

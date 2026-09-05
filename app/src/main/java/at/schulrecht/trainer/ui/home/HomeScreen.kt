@@ -7,10 +7,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -35,7 +43,16 @@ fun HomeScreen(
 ) {
     val state by viewModel.state.collectAsState()
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Schulrecht Trainer") }) }
+        topBar = {
+            TopAppBar(
+                title = { Text("Schulrecht Trainer") },
+                actions = {
+                    IconButton(onClick = { viewModel.toggleSearch() }) {
+                        Icon(Icons.Filled.Search, contentDescription = "Suchen")
+                    }
+                }
+            )
+        }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -49,6 +66,7 @@ fun HomeScreen(
                 done = state.progress.done,
                 total = state.progress.total
             )
+            GameHeader(game = state.game)
             if (state.dueCount > 0 && !state.isSyncing) {
                 Card(
                     onClick = onOpenReview,
@@ -98,16 +116,22 @@ fun HomeScreen(
             state.error?.let {
                 Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(vertical = 4.dp))
             }
+            if (state.searchOpen) {
+                OutlinedTextField(
+                    value = state.query,
+                    onValueChange = { viewModel.setQuery(it) },
+                    label = { Text("Modul suchen") },
+                    singleLine = true,
+                    trailingIcon = {
+                        IconButton(onClick = { viewModel.toggleSearch() }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Schließen")
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            GameHeader(game = state.game)
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                item {
-                    OutlinedTextField(
-                        value = state.query,
-                        onValueChange = { viewModel.setQuery(it) },
-                        label = { Text("Modul suchen") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
                 groupedModules(state.modules, state.query).forEach { (saeule, modules) ->
                     stickyHeader {
                         Text(
@@ -181,6 +205,42 @@ private fun groupedModules(
     return filtered.groupBy { it.saeule }
         .toList()
         .sortedBy { (saeule, _) -> SAEULE_ORDER[saeule] ?: 99 }
+}
+
+@Composable
+private fun GameHeader(game: at.schulrecht.trainer.ui.home.GameState) {
+    Card(modifier = Modifier
+        .fillMaxWidth()
+        .padding(vertical = 8.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                "Level ${game.level} · ${game.xp} XP · Serie ${game.streak} ${if (game.streak == 1) "Tag" else "Tage"}",
+                style = MaterialTheme.typography.titleMedium
+            )
+            LinearProgressIndicator(
+                progress = { game.xpInLevel.toFloat() / game.xpForNext },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(
+                "Noch ${game.xpForNext - game.xpInLevel} XP bis Level ${game.level + 1}",
+                style = MaterialTheme.typography.bodySmall
+            )
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(
+                    at.schulrecht.trainer.domain.ALL_BADGES,
+                    key = { it.id }
+                ) { badge ->
+                    val earned = badge.id in game.badges
+                    AssistChip(
+                        onClick = {},
+                        label = { Text(if (earned) badge.title else "?") },
+                        leadingIcon = { Text(if (earned) "★" else "·") },
+                        enabled = earned
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
