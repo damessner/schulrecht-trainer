@@ -95,6 +95,10 @@ class SchulrechtRepository(
         db.attemptDao().clearAll()
     }
 
+    fun observeLocalVersion(): Flow<String?> = prefs.manifestVersion
+
+    suspend fun remoteManifestVersion(): String = api.fetchManifest().version
+
     suspend fun sync(onProgress: (SyncProgress) -> Unit) {
         val manifest = api.fetchManifest()
         onProgress(SyncProgress(0, manifest.modules.size))

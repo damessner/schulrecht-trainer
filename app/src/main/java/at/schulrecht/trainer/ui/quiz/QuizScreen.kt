@@ -96,7 +96,7 @@ private fun QuestionCard(state: QuizUiState, viewModel: QuizViewModel, modifier:
                 checked = i in state.selected,
                 enabled = !state.revealed,
                 single = q.typ != "multiple",
-                trailing = if (state.revealed) stateFeedback(q, i, state.selected) else null,
+                trailing = if (state.revealed) stateFeedback(q, i) else null,
                 onClick = { viewModel.toggle(i) }
             )
         }
@@ -147,16 +147,8 @@ private fun OptionRow(
     }
 }
 
-private fun stateFeedback(q: QuestionUi, index: Int, selected: Set<Int>): String? {
-    val isRight = index in q.richtig
-    val wasPicked = index in selected
-    return when {
-        isRight && wasPicked -> "ok"
-        isRight && !wasPicked -> "miss"
-        !isRight && wasPicked -> "miss"
-        else -> null
-    }
-}
+private fun stateFeedback(q: QuestionUi, index: Int): String =
+    if (index in q.richtig) "ok" else "miss"
 
 @Composable
 private fun ExplanationCard(q: QuestionUi, score: Float) {

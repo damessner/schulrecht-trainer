@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -16,6 +17,8 @@ data class HomeUiState(
     val modules: List<ModuleUi> = emptyList(),
     val isSyncing: Boolean = false,
     val progress: SyncProgress = SyncProgress(0, 0),
+    val updateAvailable: Boolean = false,
+    val remoteVersion: String? = null,
     val error: String? = null
 )
 
@@ -33,6 +36,9 @@ class HomeViewModel(private val repo: SchulrechtRepository) : ViewModel() {
                     if (modules.isEmpty() && !autoSyncTried) {
                         autoSyncTried = true
                         sync()
+                    } else if (modules.isNotEmpty() && !autoSyncTried) {
+                        autoSyncTried = true
+                        checkForUpdate()
                     }
                 }
         }
@@ -41,13 +47,31 @@ class HomeViewModel(private val repo: SchulrechtRepository) : ViewModel() {
     fun sync() {
         if (_state.value.isSyncing) return
         viewModelScope.launch {
-            _state.update { it.copy(isSyncing = true, error = null) }
+            _state.update { it.copy(isSyncing = true, error = null, updateAvailable = false) }
             try {
                 repo.sync { p -> _state.update { it.copy(progress = p) } }
             } catch (e: Exception) {
                 _state.update { it.copy(error = e.message ?: "Sync fehlgeschlagen") }
             } finally {
                 _state.update { it.copy(isSyncing = false) }
+            }
+            checkForUpdate()
+        }
+    }
+
+    fun checkForUpdate() {
+        viewModelScope.launch {
+            try {
+                val remote = repo.remoteManifestVersion()
+                val local = repo.observeLocalVersion().first()
+                _state.update {
+                    it.copy(
+                        updateAvailable = local != null && remote != local,
+                        remoteVersion = remote
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(updateAvailable = false) }
             }
         }
     }

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import at.schulrecht.trainer.data.QuestionUi
 import at.schulrecht.trainer.data.SchulrechtRepository
 import at.schulrecht.trainer.domain.QuizScoring
+import at.schulrecht.trainer.domain.QuizShuffle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,7 +37,9 @@ class QuizViewModel(
 
     init {
         viewModelScope.launch {
-            val questions = repo.observeQuestions(moduleId, level).first().shuffled()
+            val questions = repo.observeQuestions(moduleId, level).first()
+                .shuffled()
+                .map { QuizShuffle.shuffle(it) }
             _state.update { it.copy(questions = questions, loading = false) }
         }
     }
