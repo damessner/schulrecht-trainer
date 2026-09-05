@@ -14,7 +14,7 @@ import android.content.Context
         AttemptEntity::class,
         ReviewStateEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class TrainerDatabase : RoomDatabase() {
@@ -45,6 +45,12 @@ abstract class TrainerDatabase : RoomDatabase() {
                 context.applicationContext,
                 TrainerDatabase::class.java,
                 "trainer.db"
-            ).addMigrations(MIGRATION_1_2).build()
+            ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build()
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `modules` ADD COLUMN `zieleJson` TEXT NOT NULL DEFAULT '[]'")
+            }
+        }
     }
 }

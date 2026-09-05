@@ -27,7 +27,8 @@ data class ModuleDto(
     val saeule: String,
     val status: String,
     val quelle: List<String>,
-    val levels: List<String>
+    val levels: List<String>,
+    val ziele: List<String>?
 )
 
 @JsonClass(generateAdapter = true)

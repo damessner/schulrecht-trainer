@@ -13,7 +13,16 @@ import kotlinx.coroutines.launch
 data class LevelStat(val level: String, val total: Int)
 
 data class ModuleUiState(
+    val title: String = "",
+    val ziele: List<String> = emptyList(),
     val levels: List<LevelStat> = emptyList()
+)
+
+val LEVEL_DESCRIPTIONS = mapOf(
+    "L1" to "Grundlagen erkennen: typische Alltagssituationen richtig einordnen.",
+    "L2" to "Sicher handeln: Fristen, Zuständigkeiten und Dokumentation beachten.",
+    "L3" to "Grenzfälle meistern: Formfehler erkennen und korrekt reagieren.",
+    "L4" to "Transfer: Wissen über Normen und Schularten hinweg anwenden."
 )
 
 class ModuleViewModel(
@@ -25,11 +34,23 @@ class ModuleViewModel(
 
     init {
         viewModelScope.launch {
+            val info = repo.observeModules().first().find { it.id == moduleId }
             val levels = listOf("L1", "L2", "L3", "L4").map { level ->
                 val count = repo.observeQuestions(moduleId, level).first().size
                 LevelStat(level, count)
             }
-            _state.update { it.copy(levels = levels) }
+            _state.update {
+                it.copy(
+                    title = info?.titel ?: moduleId,
+                    ziele = info?.let { m ->
+                        if (m.zieleJson.isBlank()) emptyList()
+                        else org.json.JSONArray(m.zieleJson).let { arr ->
+                            List(arr.length()) { i -> arr.optString(i) }
+                        }
+                    } ?: emptyList(),
+                    levels = levels
+                )
+            }
         }
     }
 }

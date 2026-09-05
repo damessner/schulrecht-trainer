@@ -8,7 +8,8 @@ data class ModuleEntity(
     @PrimaryKey val id: String,
     val titel: String,
     val saeule: String,
-    val status: String
+    val status: String,
+    val zieleJson: String = "[]"
 )
 
 @Entity(

@@ -1,7 +1,9 @@
 package at.schulrecht.trainer.ui.module
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -15,6 +17,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
@@ -35,10 +41,11 @@ fun ModuleScreen(
     onStartExam: (String) -> Unit
 ) {
     val state by viewModel.state.collectAsState()
+    var expanded by remember { mutableStateOf<String?>(null) }
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Modul $moduleId") },
+                title = { Text(state.title.ifBlank { "Modul $moduleId" }) },
                 navigationIcon = {
                     androidx.compose.material3.TextButton(onClick = onBack) {
                         Text("Zurück")
@@ -54,8 +61,15 @@ fun ModuleScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (state.levels.isEmpty()) {
-                Text("Lade Fragen …")
+            if (state.ziele.isNotEmpty()) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Lernziele", style = MaterialTheme.typography.titleMedium)
+                        state.ziele.forEach { ziel ->
+                            Text("• $ziel", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
             }
             Button(
                 onClick = { onStartExam(moduleId) },
@@ -64,20 +78,44 @@ fun ModuleScreen(
             ) {
                 Text("Prüfung: 20 Fragen, 20 Minuten")
             }
+            if (state.levels.isEmpty()) {
+                Text("Lade Fragen …")
+            }
             state.levels.forEach { level ->
+                val open = expanded == level.level
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            LEVEL_TITLES[level.level] ?: level.level,
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text("${level.total} Fragen")
-                        Button(
-                            onClick = { onStartQuiz(moduleId, level.level) },
-                            enabled = level.total > 0,
-                            modifier = Modifier.padding(top = 8.dp)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { expanded = if (open) null else level.level },
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Quiz starten")
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    LEVEL_TITLES[level.level] ?: level.level,
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Text(
+                                    "${level.total} Fragen",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                            Text(if (open) "–" else "+", style = MaterialTheme.typography.headlineSmall)
+                        }
+                        if (open) {
+                            Text(
+                                LEVEL_DESCRIPTIONS[level.level] ?: "",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                            Button(
+                                onClick = { onStartQuiz(moduleId, level.level) },
+                                enabled = level.total > 0,
+                                modifier = Modifier.padding(top = 8.dp)
+                            ) {
+                                Text("Quiz starten")
+                            }
                         }
                     }
                 }

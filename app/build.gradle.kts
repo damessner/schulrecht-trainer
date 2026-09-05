@@ -13,20 +13,27 @@ android {
         applicationId = "at.schulrecht.trainer"
         minSdk = 26
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.5.0"
+        versionCode = 7
+        versionName = "1.6.0"
     }
 
     signingConfigs {
         create("release") {
-            val storePath = project.findProperty("TRAINER_STORE_FILE") as String?
-            val pwPath = project.findProperty("TRAINER_STORE_PASSWORD_FILE") as String?
-            if (storePath != null && pwPath != null) {
-                val pw = file(pwPath).readText().trim()
-                storeFile = file(storePath)
-                storePassword = pw
-                keyAlias = project.findProperty("TRAINER_KEY_ALIAS") as String? ?: "trainer"
-                keyPassword = pw
+            val storePath = System.getenv("ANDROID_KEYSTORE_FILE")
+                ?: (project.findProperty("TRAINER_STORE_FILE") as String?)
+            val pwPath = System.getenv("ANDROID_KEYSTORE_PASSWORD_FILE")
+                ?: (project.findProperty("TRAINER_STORE_PASSWORD_FILE") as String?)
+            val pwEnv = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            if (storePath != null) {
+                val pw = pwEnv ?: pwPath?.let { file(it).readText().trim() }
+                if (pw != null) {
+                    storeFile = file(storePath)
+                    storePassword = pw
+                    keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+                        ?: (project.findProperty("TRAINER_KEY_ALIAS") as String?)
+                        ?: "trainer"
+                    keyPassword = pw
+                }
             }
         }
     }
@@ -64,7 +71,6 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
-    implementation(libs.compose.icons)
     implementation(libs.navigation.compose)
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.lifecycle.runtime.compose)

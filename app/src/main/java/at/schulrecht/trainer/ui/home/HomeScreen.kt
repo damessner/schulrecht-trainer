@@ -3,6 +3,7 @@ package at.schulrecht.trainer.ui.home
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -246,19 +247,27 @@ private fun GameHeader(game: at.schulrecht.trainer.ui.home.GameState) {
 @Composable
 private fun ModuleCard(module: ModuleUi, onClick: () -> Unit) {
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("${module.id} · ${module.titel}", style = MaterialTheme.typography.titleMedium)
-            Text(module.saeule, style = MaterialTheme.typography.bodySmall)
-            if (module.total > 0) {
-                LinearProgressIndicator(
-                    progress = { module.answered.toFloat() / module.total },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                )
-                Text("${module.answered} / ${module.total} · ${module.correct} richtig")
-            } else {
-                Text("Noch nicht geladen")
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            at.schulrecht.trainer.ui.components.OptionLetter(
+                letter = module.id.firstOrNull() ?: '•'
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text("${module.id} · ${module.titel}", style = MaterialTheme.typography.titleMedium)
+                Text(module.saeule, style = MaterialTheme.typography.bodySmall)
+                if (module.total > 0) {
+                    LinearProgressIndicator(
+                        progress = { module.answered.toFloat() / module.total },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    )
+                    Text("${module.answered} / ${module.total} · ${module.correct} richtig")
+                } else {
+                    Text("Noch nicht geladen")
+                }
             }
         }
     }

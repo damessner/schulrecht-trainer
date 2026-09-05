@@ -20,6 +20,7 @@ data class ModuleUi(
     val titel: String,
     val saeule: String,
     val status: String,
+    val ziele: List<String>,
     val total: Int,
     val answered: Int,
     val correct: Int
@@ -69,6 +70,7 @@ class SchulrechtRepository(
                 titel = m.titel,
                 saeule = m.saeule,
                 status = m.status,
+                ziele = jsonStrings(m.zieleJson),
                 total = totalByModule[m.id] ?: 0,
                 answered = latest.size,
                 correct = latest.count { it.correct }
@@ -170,7 +172,8 @@ class SchulrechtRepository(
                         id = module.id,
                         titel = module.titel,
                         saeule = module.saeule,
-                        status = module.status
+                        status = module.status,
+                        zieleJson = JSONArray(module.ziele ?: emptyList<String>()).toString()
                     )
                 )
                 for (levelFile in module.levels) {
@@ -207,11 +210,13 @@ class SchulrechtRepository(
             stand = stand
         )
 
+    private fun jsonStrings(raw: String): List<String> {
+        if (raw.isBlank()) return emptyList()
+        val arr = JSONArray(raw)
+        return List(arr.length()) { i -> arr.optString(i) }
+    }
+
     private fun QuestionEntity.toUi(): QuestionUi {
-        fun jsonStrings(raw: String): List<String> {
-            val arr = JSONArray(raw)
-            return List(arr.length()) { i -> arr.optString(i) }
-        }
         return QuestionUi(
             id = id,
             modulId = modulId,
