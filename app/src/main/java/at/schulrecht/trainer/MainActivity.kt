@@ -1,8 +1,17 @@
 package at.schulrecht.trainer
 
+import android.app.DownloadManager
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -22,8 +31,24 @@ import at.schulrecht.trainer.ui.quiz.QuizViewModel
 import at.schulrecht.trainer.ui.theme.TrainerTheme
 
 class MainActivity : ComponentActivity() {
+    private var updateDownloadId: Long = -1
+
+    private val downloadReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+            if (id != updateDownloadId) return
+            installApk()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        androidx.core.content.ContextCompat.registerReceiver(
+            this,
+            downloadReceiver,
+            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+            androidx.core.content.ContextCompat.RECEIVER_EXPORTED
+        )
         val container = (application as TrainerApp).container
         setContent {
             TrainerTheme {
@@ -31,12 +56,15 @@ class MainActivity : ComponentActivity() {
                 NavHost(navController = nav, startDestination = "home") {
                     composable("home") {
                         val vm: HomeViewModel = viewModel(
-                            factory = factory { HomeViewModel(container.repository) }
+                            factory = factory {
+                                HomeViewModel(container.repository, BuildConfig.VERSION_NAME)
+                            }
                         )
                         HomeScreen(
                             viewModel = vm,
                             onOpenModule = { nav.navigate("module/$it") },
-                            onOpenReview = { nav.navigate("review") }
+                            onOpenReview = { nav.navigate("review") },
+                            onInstallAppUpdate = { url -> downloadUpdate(url) }
                         )
                     }
                     composable(
@@ -115,4 +143,46 @@ class MainActivity : ComponentActivity() {
             @Suppress("UNCHECKED_CAST")
             override fun <V : ViewModel> create(modelClass: Class<V>): V = create() as V
         }
+
+    private fun downloadUpdate(apkUrl: String) {
+        try {
+            val request = DownloadManager.Request(Uri.parse(apkUrl))
+                .setTitle("Schulrecht Trainer Update")
+                .setDestinationInExternalFilesDir(
+                    this,
+                    Environment.DIRECTORY_DOWNLOADS,
+                    "update.apk"
+                )
+                .setNotificationVisibility(
+                    DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                )
+            val manager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
+            updateDownloadId = manager.enqueue(request)
+            Toast.makeText(this, "Update wird geladen …", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Download fehlgeschlagen.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun installApk() {
+        val file = java.io.File(
+            getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
+            "update.apk"
+        )
+        if (!file.exists()) {
+            Toast.makeText(this, "Download fehlgeschlagen.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val apkUri = FileProvider.getUriForFile(this, "$packageName.provider", file)
+        val install = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(apkUri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(install)
+    }
+
+    override fun onDestroy() {
+        unregisterReceiver(downloadReceiver)
+        super.onDestroy()
+    }
 }

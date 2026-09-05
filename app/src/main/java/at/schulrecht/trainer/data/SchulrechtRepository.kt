@@ -7,6 +7,8 @@ import at.schulrecht.trainer.data.local.ReviewStateEntity
 import at.schulrecht.trainer.data.local.TrainerDatabase
 import at.schulrecht.trainer.data.local.UserPrefs
 import at.schulrecht.trainer.data.remote.ContentApi
+import at.schulrecht.trainer.data.remote.GithubApi
+import at.schulrecht.trainer.domain.AppVersion
 import at.schulrecht.trainer.domain.Srs
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -40,9 +42,12 @@ data class QuestionUi(
 
 data class SyncProgress(val done: Int, val total: Int)
 
+data class AppUpdate(val version: String, val apkUrl: String)
+
 class SchulrechtRepository(
     private val db: TrainerDatabase,
     private val api: ContentApi,
+    private val github: GithubApi,
     private val prefs: UserPrefs
 ) {
     fun observeModules(): Flow<List<ModuleEntity>> = db.moduleDao().observeModules()
@@ -134,6 +139,13 @@ class SchulrechtRepository(
     fun observeLocalVersion(): Flow<String?> = prefs.manifestVersion
 
     suspend fun remoteManifestVersion(): String = api.fetchManifest().version
+
+    suspend fun checkAppUpdate(currentVersion: String): AppUpdate? {
+        val release = github.latestRelease()
+        if (!AppVersion.isNewer(release.tag_name, currentVersion)) return null
+        val apk = release.assets.firstOrNull { it.name.endsWith(".apk") } ?: return null
+        return AppUpdate(release.tag_name, apk.browser_download_url)
+    }
 
     suspend fun sync(onProgress: (SyncProgress) -> Unit) {
         val manifest = api.fetchManifest()

@@ -2,6 +2,7 @@ package at.schulrecht.trainer.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import at.schulrecht.trainer.data.AppUpdate
 import at.schulrecht.trainer.data.ModuleUi
 import at.schulrecht.trainer.data.SchulrechtRepository
 import at.schulrecht.trainer.data.SyncProgress
@@ -21,10 +22,14 @@ data class HomeUiState(
     val progress: SyncProgress = SyncProgress(0, 0),
     val updateAvailable: Boolean = false,
     val remoteVersion: String? = null,
+    val appUpdate: AppUpdate? = null,
     val error: String? = null
 )
 
-class HomeViewModel(private val repo: SchulrechtRepository) : ViewModel() {
+class HomeViewModel(
+    private val repo: SchulrechtRepository,
+    private val appVersion: String
+) : ViewModel() {
     private val _state = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
     private var autoSyncTried = false
@@ -71,10 +76,16 @@ class HomeViewModel(private val repo: SchulrechtRepository) : ViewModel() {
             try {
                 val remote = repo.remoteManifestVersion()
                 val local = repo.observeLocalVersion().first()
+                val appUpdate = try {
+                    repo.checkAppUpdate(appVersion)
+                } catch (e: Exception) {
+                    null
+                }
                 _state.update {
                     it.copy(
                         updateAvailable = local != null && remote != local,
-                        remoteVersion = remote
+                        remoteVersion = remote,
+                        appUpdate = appUpdate
                     )
                 }
             } catch (e: Exception) {

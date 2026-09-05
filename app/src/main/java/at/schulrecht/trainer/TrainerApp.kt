@@ -5,11 +5,12 @@ import at.schulrecht.trainer.data.SchulrechtRepository
 import at.schulrecht.trainer.data.local.TrainerDatabase
 import at.schulrecht.trainer.data.local.UserPrefs
 import at.schulrecht.trainer.data.remote.ContentApi
+import at.schulrecht.trainer.data.remote.GithubApi
 
 class AppContainer(app: Application) {
     private val db = TrainerDatabase.build(app)
     private val prefs = UserPrefs(app)
-    val repository = SchulrechtRepository(db, ContentApi(), prefs)
+    val repository = SchulrechtRepository(db, ContentApi(), GithubApi(), prefs)
 }
 
 class TrainerApp : Application() {

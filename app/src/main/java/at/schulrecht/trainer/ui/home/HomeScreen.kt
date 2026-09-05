@@ -30,7 +30,8 @@ import at.schulrecht.trainer.data.ModuleUi
 fun HomeScreen(
     viewModel: HomeViewModel,
     onOpenModule: (String) -> Unit,
-    onOpenReview: () -> Unit
+    onOpenReview: () -> Unit,
+    onInstallAppUpdate: (String) -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     Scaffold(
@@ -70,6 +71,18 @@ fun HomeScreen(
                         .padding(vertical = 8.dp)
                 ) {
                     Text("Inhalte laden")
+                }
+            }
+            state.appUpdate?.let { update ->
+                if (!state.isSyncing) {
+                    Button(
+                        onClick = { onInstallAppUpdate(update.apkUrl) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    ) {
+                        Text("App-Update ${update.version} – herunterladen & installieren")
+                    }
                 }
             }
             if (state.updateAvailable && !state.isSyncing) {
