@@ -1,5 +1,11 @@
 package at.schulrecht.trainer.ui.quiz
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -79,7 +85,6 @@ private fun QuestionCard(state: QuizUiState, viewModel: QuizViewModel, modifier:
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -87,41 +92,58 @@ private fun QuestionCard(state: QuizUiState, viewModel: QuizViewModel, modifier:
             progress = { (state.index + 1).toFloat() / state.questions.size },
             modifier = Modifier.fillMaxWidth()
         )
-        Text(
-            "Frage ${state.index + 1} / ${state.questions.size} · ${typeLabel(q.typ)}",
-            style = MaterialTheme.typography.bodySmall
-        )
-        Text(q.situation, style = MaterialTheme.typography.bodyLarge)
-        q.optionen.forEachIndexed { i, text ->
-            OptionRow(
-                letter = 'A' + i,
-                text = text,
-                checked = i in state.selected,
-                enabled = !state.revealed,
-                single = q.typ != "multiple",
-                trailing = if (state.revealed) stateFeedback(q, i) else null,
-                onClick = { viewModel.toggle(i) }
-            )
-        }
-        if (!state.revealed) {
-            Button(
-                onClick = { viewModel.reveal() },
-                enabled = state.selected.isNotEmpty(),
-                modifier = Modifier.fillMaxWidth()
+        AnimatedContent(
+            targetState = state.index,
+            transitionSpec = {
+                (slideInHorizontally { it / 3 } + fadeIn()).togetherWith(
+                    slideOutHorizontally { -it / 3 } + fadeOut()
+                )
+            },
+            label = "question"
+        ) { idx ->
+            val question = state.questions.getOrNull(idx) ?: return@AnimatedContent
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("Antwort prüfen")
-            }
-        } else {
-            ExplanationCard(
-                q = q,
-                headline = if (state.lastScore == 1f) {
-                    "Richtig."
-                } else {
-                    "Teils richtig (${(state.lastScore * 100).toInt()} %)."
+                Text(
+                    "Frage ${idx + 1} / ${state.questions.size} · ${typeLabel(question.typ)}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(question.situation, style = MaterialTheme.typography.bodyLarge)
+                question.optionen.forEachIndexed { i, text ->
+                    OptionRow(
+                        letter = 'A' + i,
+                        text = text,
+                        checked = i in state.selected,
+                        enabled = !state.revealed,
+                        single = question.typ != "multiple",
+                        trailing = if (state.revealed) stateFeedback(question, i) else null,
+                        revealed = state.revealed,
+                        onClick = { viewModel.toggle(i) }
+                    )
                 }
-            )
-            OutlinedButton(onClick = { viewModel.next() }, modifier = Modifier.fillMaxWidth()) {
-                Text(if (state.index + 1 >= state.questions.size) "Zum Ergebnis" else "Weiter")
+                if (!state.revealed) {
+                    Button(
+                        onClick = { viewModel.reveal() },
+                        enabled = state.selected.isNotEmpty(),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Antwort prüfen")
+                    }
+                } else {
+                    ExplanationCard(
+                        q = question,
+                        headline = if (state.lastScore == 1f) {
+                            "Richtig."
+                        } else {
+                            "Teils richtig (${(state.lastScore * 100).toInt()} %)."
+                        }
+                    )
+                    OutlinedButton(onClick = { viewModel.next() }, modifier = Modifier.fillMaxWidth()) {
+                        Text(if (state.index + 1 >= state.questions.size) "Zum Ergebnis" else "Weiter")
+                    }
+                }
             }
         }
     }
@@ -135,11 +157,13 @@ private fun OptionRow(
     enabled: Boolean,
     single: Boolean,
     trailing: String?,
+    revealed: Boolean,
     onClick: () -> Unit
 ) {
-    val container = when (trailing) {
-        "ok" -> CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
-        "miss" -> CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+    val container = when {
+        trailing == "ok" -> CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+        trailing == "miss" -> CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+        checked -> CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
         else -> CardDefaults.cardColors()
     }
     Card(colors = container, modifier = Modifier.fillMaxWidth()) {
@@ -147,9 +171,9 @@ private fun OptionRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .selectable(selected = checked, enabled = enabled, role = Role.RadioButton, onClick = onClick)
-                .padding(12.dp),
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (single) RadioButton(selected = checked, onClick = null, enabled = enabled)
             else Checkbox(checked = checked, onCheckedChange = null, enabled = enabled)

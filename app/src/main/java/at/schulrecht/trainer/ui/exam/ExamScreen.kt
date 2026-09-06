@@ -95,7 +95,14 @@ private fun ExamQuestionView(state: ExamUiState, viewModel: ExamViewModel, modif
         )
         Text(q.situation, style = MaterialTheme.typography.bodyLarge)
         q.optionen.forEachIndexed { i, text ->
-            Card(modifier = Modifier.fillMaxWidth()) {
+            Card(
+                colors = if (i in selected) {
+                    CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                } else {
+                    CardDefaults.cardColors()
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()

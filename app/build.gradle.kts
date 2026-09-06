@@ -13,8 +13,8 @@ android {
         applicationId = "at.schulrecht.trainer"
         minSdk = 26
         targetSdk = 35
-        versionCode = 9
-        versionName = "1.6.2"
+        versionCode = 10
+        versionName = "1.7.0"
     }
 
     signingConfigs {
@@ -70,6 +70,7 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.splashscreen)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
